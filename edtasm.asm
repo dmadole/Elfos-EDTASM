@@ -2099,6 +2099,7 @@ insttab:   db      'AD',('D'+80h),1,0f4h,0
            db      'LBN',('Z'+80h),3,0cah,0
            db      'LB',('Q'+80h),3,0c1h,0
            db      'LB',('R'+80h),3,0c0h,0
+           db      'LB',('Z'+80h),3,0c2h,0
            db      'LD',('A'+80h),5,040h,0
            db      'LD',('I'+80h),2,0f8h,0
            db      'LD',('N'+80h),4
@@ -2114,7 +2115,7 @@ insttab:   db      'AD',('D'+80h),1,0f4h,0
            db      'LS',('Z'+80h),1,0ceh,0
            db      'MAR',('K'+80h),1,079h,0
            db      'NB',('R'+80h),1,038h,0
-           db      'NLB',('R'+80h),1,0c2h,0
+           db      'NLB',('R'+80h),1,0c8h,0
            db      'NO',('P'+80h),1,0c4h,0
            db      'O',('R'+80h),1,0f1h,0
            db      'OR',('I'+80h),2,0f9h,0

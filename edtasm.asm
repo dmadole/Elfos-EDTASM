@@ -33,7 +33,7 @@ exitaddr:  equ     07003h
 #ifdef PICOROM
 #define ANYROM
 #define CODE     0b000h
-#define DATA     04000h
+#define DATA     01000h
 visual:    equ     0e000h
 visualds:  equ     07e00h
 xopenw:    equ     08006h
@@ -50,7 +50,7 @@ exitaddr:  equ     08003h
 ;[RLA] STG ROM addresses and options
 include config.inc
 #define CODE     EDTASM
-#define DATA     04000h
+#define DATA     01000h
 ;[RLA] XMODEM entry vectors for the STG EPROM ...
 xopenw:    equ     XMODEM + 0*3
 xopenr:    equ     XMODEM + 1*3
@@ -479,45 +479,44 @@ gocont:    sep     scall               ; print the line
 ; ***************************************
 ; *** Delete current line from buffer ***
 ; ***************************************
-kill:      sep     scall               ; move to specified line
+kill:      sep     scall               ; check if exists
+           dw      findline
+           lbdf    killquit
+           ghi     ra                  ; save dest pointer
+           phi     rd
+           glo     ra
+           plo     rd
+           sep     scall               ; move to specified line
            dw      setcurln
-killmnlp:  glo     r9                  ; check count
-           lbnz    killgo
+           glo     r9                  ; calc source pointer
+           str     r2
+           glo     r8
+           add
+           plo     r8
            ghi     r9
-           lbnz    killgo
+           str     r2
+           ghi     r8
+           adci    0
+           phi     r8
+           sep     scall               ; get address for line
+           dw      findline
+killline:  ldn     ra                  ; get length to next line
+           lbz     killdone
+           adi     1
+           plo     rc
+killloop:  lda     ra                  ; get source byte
+           str     rd                  ; place into destintion
+           inc     rd
+           dec     rc                  ; decrement count
+           glo     rc                  ; get count
+           lbnz    killloop            ; loop until line is done
+           lbr     killline            ; and loop for next line
+killdone:  str     rd
+killquit:  sep     scall               ; move to specified line
+           dw      getcurln
            sep     scall               ; display new line
            dw      printit
            lbr     mainlp              ; and back to main
-killgo:    sep     scall               ; get current line number
-           dw      getcurln
-           sep     scall               ; get address for line
-           dw      findline
-           ldn     ra                  ; get length to next line
-           adi     1
-           str     r2                  ; prepare to add it
-           plo     rc
-           glo     ra                  ; add it to line address
-           add
-           plo     rd
-           ghi     ra
-           adci    0
-           phi     rd
-killlp:    glo     rc                  ; get count
-           lbz     killnxt             ; jump if done copying line
-           lda     rd                  ; get source byte
-           str     ra                  ; place into destintion
-           inc     ra
-           dec     rc                  ; decrement count
-           lbr     killlp              ; loop until line is done
-killnxt:   dec     ra                  ; move back to length bytes
-           dec     rd
-           ldn     ra                  ; get length
-           lbz     killdn              ; jump if at end of buffer
-           adi     1                   ; prepare count
-           plo     rc
-           lbr     killlp              ; and loop for next line
-killdn:    dec     r9                  ; decrement count
-           lbr     killmnlp            ; and check for more
 
 ; ********************
 ; *** Return to OS ***
@@ -850,9 +849,11 @@ findline:  ldi     high textbuf        ; point to text buffer
            phi     rc
            glo     r8
            plo     rc
-findlp:    glo     rc                  ; see if count is zero
+findlp:    ghi     rc
+           lbnz    notfound
+           glo     rc                  ; see if count is zero
            lbz     found               ; jump if there
-           lda     ra
+notfound:  lda     ra
            lbz     fnderr              ; jump if end of buffer was reached
            str     r2                  ; prepare for add
            glo     ra                  ; add to address
@@ -866,7 +867,8 @@ findlp:    glo     rc                  ; see if count is zero
 found:     adi     0                   ; signal line found
            shr
            sep     sret                ; and return to caller
-fnderr:    smi     0                   ; signal end of buffer reached
+fnderr:    dec     ra
+           smi     0                   ; signal end of buffer reached
            sep     sret                ; return to caller
 
 ; *************************************
@@ -1981,7 +1983,7 @@ addsym2:   dec     r8                  ; point back to previous char
 save:      sep     scall               ; open XMODEM channel
            dw      xopenw
            mov     rc,textbuf          ; point to edit buffer
-savelp:    ldn     rc                  ; get size next line
+savelp:    lda     rc                  ; get size next line
            lbz     save1               ; jump if end of buffer
            str     r2                  ; store for add
            glo     rc                  ; get current address
@@ -1991,8 +1993,7 @@ savelp:    ldn     rc                  ; get size next line
            adci    0
            phi     rc
            lbr     savelp              ; look at next line
-save1:     inc     rc                  ; move past terminator
-           ghi     rc                  ; get high byte of address
+save1:     ghi     rc                  ; get high byte of address
            smi     baud.1              ; offset from base
            phi     rc                  ; rc now has count
            mov     rf, buffer          ; point to buffer
